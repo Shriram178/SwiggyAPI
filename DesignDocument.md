@@ -14,6 +14,7 @@ The project will be developed in the following phases:
 | &nbsp;&nbsp;&nbsp;&nbsp;- MenuItem Module                    | 2 hours         |
 | &nbsp;&nbsp;&nbsp;&nbsp;- Order & Cart Module               | 3 hours         |
 | &nbsp;&nbsp;&nbsp;&nbsp;- DeliveryAgent Module              | 1 hour          |
+| &nbsp;&nbsp;&nbsp;&nbsp;- Expose endpoints to a another system    | 2 hour          |
 | Testing                            | 1 day           |
 | Deployment                         | 1 day           |
 | **Total Estimated Time**           | **6 days**      |
@@ -112,26 +113,6 @@ Build a backend API for a food-delivery platform (like Swiggy) that allows custo
 
 - All data is stored in PostgreSQL.
 - Authentication and role management are handled by Keycloak (external system).
-
----
-
-## Sequence Diagram
-
-```text
-Customer           API                Keycloak         PostgreSQL       DeliveryAgent
-    |               |                    |                 |                  |
-    |--Login--->    |                    |                 |                  |
-    |               |--Validate creds--> |                 |                  |
-    |<--JWT-------- |                    |                 |                  |
-    |--GET /restaurants---------------> |--SELECT-------->|                  |
-    |<--List----------------------------|                 |                  |
-    |--POST /orders-------------------> |                 |--INSERT Orders-> |
-    |<--201, orderId-------------------|                 |--INSERT Items->  |
-    |--GET /orders/{id}---------------> |--SELECT-------->|                  |
-    |<--Status, agent info-------------|                 |                  |
-    |               |                    |                 |<--Poll ----------|
-    |               |                    |                 |--PUT assign-----|
-```
 
 ---
 
