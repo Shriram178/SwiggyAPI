@@ -43,12 +43,6 @@ Build a backend API for a food-delivery platform (like Swiggy) that allows custo
 
 ### Database Design Structure Example
 
-**Entities:**
-- User (from Keycloak)
-- Restaurant (1 → * Menu)
-- Menu (1 → * MenuItem)
-- Cart (1 per user)
-- CartItem (* → 1 MenuItem)
 
 ![Swiggy DB design](https://github.com/user-attachments/assets/4113b1ea-ba19-410e-98b1-1a3806ef35e5)
 
