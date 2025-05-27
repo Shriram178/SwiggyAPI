@@ -5,8 +5,8 @@ The project will be developed in the following phases:
 
 | Phase                              | Estimated Time  |
 |------------------------------------|-----------------|
-| Requirement Analysis               | 1 day           |
-| System Design                      | 1 day           |
+| Requirement Analysis               | 2 hours           |
+| System Design                      | 3 hours           |
 | Development                        | 2 days          |
 | &nbsp;&nbsp;&nbsp;&nbsp;- Creating Models                  | 1 hour          |
 | &nbsp;&nbsp;&nbsp;&nbsp;- Authentication Module (Keycloak integration) | 2 hours         |
@@ -15,9 +15,9 @@ The project will be developed in the following phases:
 | &nbsp;&nbsp;&nbsp;&nbsp;- Order & Cart Module               | 3 hours         |
 | &nbsp;&nbsp;&nbsp;&nbsp;- DeliveryAgent Module              | 1 hour          |
 | &nbsp;&nbsp;&nbsp;&nbsp;- Expose endpoints to a another system    | 2 hour          |
-| Testing                            | 1 day           |
+| Manual Testing                            | 2 hour           |
 | Deployment                         | 1 day           |
-| **Total Estimated Time**           | **6 days**      |
+| **Total Estimated Time**           | **4 days**      |
 
 ---
 
