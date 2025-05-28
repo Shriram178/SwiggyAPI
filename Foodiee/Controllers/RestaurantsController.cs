@@ -1,8 +1,7 @@
-﻿using System.Linq.Dynamic.Core;
-using Foodiee.DTO;
+﻿using Foodiee.DTO;
 using Foodiee.Models;
+using Foodiee.Repositories;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Foodiee.Controllers
 {
@@ -10,16 +9,18 @@ namespace Foodiee.Controllers
     [ApiController]
     public class RestaurantsController : ControllerBase
     {
-        private readonly FoodieeDbContext _context;
 
-        public RestaurantsController(FoodieeDbContext context)
+        private readonly IRestaurantRepository _repository;
+
+        public RestaurantsController(IRestaurantRepository repository)
         {
-            _context = context;
+            _repository = repository;
         }
 
         // POST: api/Restaurants
         [HttpPost(Name = "CreateRestaurant")]
-        public async Task<ActionResult<RestDTO<RestaurantDTO>>> CreateRestaurant(CreateRestaurantDTO dto)
+        public async Task<ActionResult<RestDTO<RestaurantDTO>>> CreateRestaurantAsync(
+            CreateRestaurantDTO dto)
         {
             var restaurant = new Restaurant
             {
@@ -29,12 +30,9 @@ namespace Foodiee.Controllers
                 PhoneNumber = dto.PhoneNumber,
                 City = dto.City,
                 Description = dto.Description,
-
-
             };
 
-            _context.Restaurants.Add(restaurant);
-            await _context.SaveChangesAsync();
+            var createdRestaurant = await _repository.CreateAsync(restaurant);
 
             var response = new RestDTO<RestaurantDTO>
             {
@@ -47,24 +45,16 @@ namespace Foodiee.Controllers
                 }
             };
 
-            return CreatedAtAction(nameof(GetRestaurant), new { id = restaurant.Id }, response);
+            return CreatedAtAction(null, new { id = restaurant.Id }, response);
         }
 
         [HttpGet(Name = "GetRestaurants")]
-        public async Task<ActionResult<RestDTO<RestaurantDTO[]>>> GetRestaurants([FromQuery] RequestDTO input)
+        public async Task<ActionResult<RestDTO<RestaurantDTO[]>>> GetRestaurantsAsync(
+            [FromQuery] RequestDTO input)
         {
+            var (items, total) = await _repository.GetPagedAsync(input);
 
-
-            var query = _context.Restaurants.AsQueryable();
-            if (!string.IsNullOrEmpty(input.FilterQuery))
-                query = query.Where(b => b.Name.Contains(input.FilterQuery));
-            var recordCount = await query.CountAsync();
-            query = query
-                .OrderBy($"{input.SortColumn} {input.SortOrder}")
-                .Skip(input.PageIndex * input.PageSize)
-                .Take(input.PageSize);
-
-            var dtos = await query
+            var dto = items
                 .Select(r => new RestaurantDTO
                 {
                     Id = r.Id,
@@ -72,8 +62,7 @@ namespace Foodiee.Controllers
                     Address = r.Address,
                     PhoneNumber = r.PhoneNumber,
                     Description = r.Description
-                })
-                .ToArrayAsync();
+                }).ToArray();
 
             var links = new List<LinkDTO> {
                     new LinkDTO(
@@ -88,9 +77,9 @@ namespace Foodiee.Controllers
 
             var response = new RestDTO<RestaurantDTO[]>
             {
-                Data = dtos,
+                Data = dto,
                 Links = links,
-                RecordCount = recordCount,
+                RecordCount = total,
                 PageIndex = input.PageIndex,
                 PageSize = input.PageSize
             };
@@ -102,9 +91,10 @@ namespace Foodiee.Controllers
 
         // GET: api/Restaurants/{id}
         [HttpGet("{id}", Name = "GetRestaurant")]
-        public async Task<ActionResult<RestDTO<RestaurantDTO>>> GetRestaurant(Guid id)
+        public async Task<ActionResult<RestDTO<RestaurantDTO>>> GetRestaurantAsync(
+            Guid id)
         {
-            var restaurant = await _context.Restaurants.FindAsync(id);
+            var restaurant = await _repository.GetByIdAsync(id);
 
             if (restaurant == null)
                 return NotFound();
@@ -123,65 +113,66 @@ namespace Foodiee.Controllers
             return Ok(response);
         }
 
-        [HttpPost("Update", Name = "UpdateRestaurant")]
+        [HttpPut("Update", Name = "UpdateRestaurant")]
         [ResponseCache(NoStore = true)]
-        public async Task<RestDTO<RestaurantDTO?>> UpdateRestaurant([FromBody] RestaurantDTO model)
+        public async Task<ActionResult<RestDTO<RestaurantDTO?>>> UpdateRestaurantAsync(
+            [FromBody] RestaurantDTO model)
         {
-            var restaurant = await _context.Restaurants
-                .FirstOrDefaultAsync(r => r.Id == model.Id);
-
-            if (restaurant != null)
+            // Map DTO → Entity
+            var toUpdate = new Restaurant
             {
-                if (!string.IsNullOrEmpty(model.Name))
-                    restaurant.Name = model.Name;
-                if (!string.IsNullOrEmpty(model.Address))
-                    restaurant.Address = model.Address;
-                if (!string.IsNullOrEmpty(model.Description))
-                    restaurant.Description = model.Description;
-                if (!string.IsNullOrEmpty(model.PhoneNumber))
-                    restaurant.PhoneNumber = model.PhoneNumber;
+                Id = model.Id,
+                Name = model.Name,
+                Address = model.Address,
+                Description = model.Description,
+                PhoneNumber = model.PhoneNumber
+            };
 
-                _context.Restaurants.Update(restaurant);
-                await _context.SaveChangesAsync();
-            }
+            // Call repo
+            var updated = await _repository.UpdateAsync(toUpdate);
 
-            var dto = restaurant != null ? new RestaurantDTO
+            if (updated == null)
+                return NotFound(new RestDTO<RestaurantDTO?> { Data = null });
+
+            // Map Entity → DTO
+            var dto = new RestaurantDTO
             {
-                Id = restaurant.Id,
-                Name = restaurant.Name,
-                Address = restaurant.Address,
-                PhoneNumber = restaurant.PhoneNumber,
-                Description = restaurant.Description
-            } : null;
+                Id = updated.Id,
+                Name = updated.Name,
+                Address = updated.Address,
+                PhoneNumber = updated.PhoneNumber,
+                Description = updated.Description
+            };
 
-            return new RestDTO<RestaurantDTO?>()
+            // HATEOAS link
+            var links = new List<LinkDTO>
+            {
+                new LinkDTO(
+                    Url.Action(
+                        null,
+                        "Restaurants",
+                        new { id = dto.Id },
+                        Request.Scheme)!,
+                    "self",
+                    "POST")
+            };
+
+            return Ok(new RestDTO<RestaurantDTO?>
             {
                 Data = dto,
-                Links = new List<LinkDTO>
-        {
-            new LinkDTO(
-                Url.Action(
-                    null,
-                    "Restaurants",
-                    model,
-                    Request.Scheme)!,
-                "self",
-                "POST"),
-        }
-            };
+                Links = links
+            });
         }
 
         [HttpDelete("{id}", Name = "DeleteRestaurant")]
-        public async Task<ActionResult<RestDTO<RestaurantDTO>>> DeleteRestaurant(Guid id)
+        public async Task<ActionResult<RestDTO<RestaurantDTO>>> DeleteRestaurantAsync(Guid id)
         {
-            var restaurant = await _context.Restaurants
-                .FirstOrDefaultAsync(r => r.Id == id);
+            var restaurant = await _repository.DeleteAsync(id);
 
             if (restaurant == null)
                 return NotFound();
 
-            // Map to DTO before deletion
-            var dto = new RestaurantDTO
+            RestaurantDTO dto = new RestaurantDTO
             {
                 Id = restaurant.Id,
                 Name = restaurant.Name,
@@ -189,9 +180,6 @@ namespace Foodiee.Controllers
                 PhoneNumber = restaurant.PhoneNumber,
                 Description = restaurant.Description
             };
-
-            _context.Restaurants.Remove(restaurant);
-            await _context.SaveChangesAsync();
 
             var response = new RestDTO<RestaurantDTO>
             {

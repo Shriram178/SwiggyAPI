@@ -1,5 +1,6 @@
 
 using Foodiee.Models;
+using Foodiee.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 namespace Foodiee
@@ -11,7 +12,10 @@ namespace Foodiee
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
-
+            builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+            builder.Services.AddScoped<ICartRepository, CartRepository>();
+            builder.Services.AddScoped<IMenuItemRepository, MenuItemRepository>();
+            builder.Services.AddScoped<IRestaurantRepository, RestaurantRepository>();
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();

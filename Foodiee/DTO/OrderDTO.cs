@@ -1,4 +1,6 @@
-﻿namespace Foodiee.DTO
+﻿using Foodiee.Models;
+
+namespace Foodiee.DTO
 {
     public class OrderDTO
     {
@@ -6,7 +8,8 @@
         public Guid UserId { get; set; }
         public DateTime PlacedAt { get; set; }
         public List<OrderItemDTO> Items { get; set; }
-        public string Status { get; set; }
+        public OrderStatus Status { get; set; }
+
     }
 
 }
