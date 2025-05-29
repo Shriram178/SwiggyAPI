@@ -15,19 +15,30 @@ namespace Foodiee.Repositories
 
         public async Task<Order?> GetOrderByIdAsync(Guid orderId)
         {
-            return await _context.Orders.FindAsync(orderId);
+            var order = await _context.Orders.Where(o => o.Id == orderId)
+                .Include(o => o.Restaurant)
+                .Include(o => o.DeliveryAgent)
+                .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.MenuItem)
+                .FirstOrDefaultAsync();
+
+            return order;
         }
 
         public async Task<List<Order>> GetOrdersByUserIdAsync(Guid userId)
         {
             return await _context.Orders
-                .Where(o => o.UserId == userId)
-                .Include(o => o.OrderItems)
-                    .ThenInclude(oi => oi.MenuItem)
-                .ToListAsync();
+        .Where(o => o.UserId == userId)
+        .Include(o => o.Restaurant)
+        .Include(o => o.DeliveryAgent)
+        .Include(o => o.OrderItems)
+            .ThenInclude(oi => oi.MenuItem)
+        .ToListAsync();
+
+
         }
 
-        public async Task<Guid> PlaceOrderFromCartAsync(Guid userId)
+        public async Task<Order> PlaceOrderFromCartAsync(Guid userId)
         {
             var cart = await _context.Carts
         .Include(c => c.CartItems)
@@ -70,7 +81,17 @@ namespace Foodiee.Repositories
             _context.Carts.Remove(cart);
             await _context.SaveChangesAsync();
 
-            return order.Id;
+            // Eagerly load navigation properties
+            await _context.Entry(order).Reference(o => o.Restaurant).LoadAsync();
+            await _context.Entry(order).Reference(o => o.DeliveryAgent).LoadAsync();
+            await _context.Entry(order).Collection(o => o.OrderItems).LoadAsync();
+
+            foreach (var item in order.OrderItems)
+            {
+                await _context.Entry(item).Reference(oi => oi.MenuItem).LoadAsync();
+            }
+
+            return order;
         }
     }
 }

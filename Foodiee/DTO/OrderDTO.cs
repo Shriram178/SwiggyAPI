@@ -1,14 +1,16 @@
-﻿using Foodiee.Models;
-
-namespace Foodiee.DTO
+﻿namespace Foodiee.DTO
 {
     public class OrderDTO
     {
+
         public Guid Id { get; set; }
-        public Guid UserId { get; set; }
-        public DateTime PlacedAt { get; set; }
-        public List<OrderItemDTO> Items { get; set; }
-        public OrderStatus Status { get; set; }
+        public DateTime OrderDate { get; set; }
+        public decimal TotalAmount { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public string DeliveryAddress { get; set; } = string.Empty;
+        public string? DeliveryAgentName { get; set; }
+        public string RestaurantName { get; set; } = string.Empty;
+        public List<OrderItemDTO> OrderItems { get; set; } = new();
 
     }
 

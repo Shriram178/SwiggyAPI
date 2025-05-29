@@ -26,7 +26,6 @@ namespace Foodiee.Models
         [Required]
         public string DeliveryAddress { get; set; }
 
-        [Required]
         public Guid? DeliveryAgentId { get; set; }
 
         public DeliveryAgentProfile? DeliveryAgent { get; set; }
