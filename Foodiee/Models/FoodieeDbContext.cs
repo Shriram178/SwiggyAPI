@@ -74,6 +74,12 @@ namespace Foodiee.Models
                 .HasForeignKey(oi => oi.MenuItemId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.Restaurant)
+                .WithOne(r => r.Owner)
+                .HasForeignKey<Restaurant>(r => r.Id)
+                .OnDelete(DeleteBehavior.Cascade);
+
         }
     }
 }

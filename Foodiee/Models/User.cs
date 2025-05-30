@@ -8,6 +8,12 @@ namespace Foodiee.Models
         [Required]
         public Guid Id { get; set; }
 
+        public string KeycloakId { get; set; }
+
+        public Guid? RestaurantId { get; set; }
+
+        public virtual Restaurant? Restaurant { get; set; }
+
         [Required]
         public string Username { get; set; } = null;
 

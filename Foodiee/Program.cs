@@ -13,6 +13,12 @@ namespace Foodiee
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Services.AddLogging(loggingBuilder =>
+            {
+                loggingBuilder.AddConsole();
+                loggingBuilder.AddDebug();
+            });
+
             //builder.Services.AddScoped<IClaimsTransformation, KeycloakRoleClaimsTransformer>();
             builder.Services.AddScoped<UserSyncService>();
 
