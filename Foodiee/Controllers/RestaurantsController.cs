@@ -1,6 +1,7 @@
 ﻿using Foodiee.DTO;
 using Foodiee.Models;
 using Foodiee.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Foodiee.Controllers
@@ -19,6 +20,7 @@ namespace Foodiee.Controllers
 
         // POST: api/Restaurants
         [HttpPost(Name = "CreateRestaurant")]
+        [Authorize(Policy = "restaurant-owner")]
         public async Task<ActionResult<RestDTO<RestaurantDTO>>> CreateRestaurantAsync(
             CreateRestaurantDTO dto)
         {
@@ -114,6 +116,7 @@ namespace Foodiee.Controllers
         }
 
         [HttpPut("Update", Name = "UpdateRestaurant")]
+        [Authorize(Policy = "restaurant-owner")]
         [ResponseCache(NoStore = true)]
         public async Task<ActionResult<RestDTO<RestaurantDTO?>>> UpdateRestaurantAsync(
             [FromBody] RestaurantDTO model)
@@ -165,6 +168,7 @@ namespace Foodiee.Controllers
         }
 
         [HttpDelete("{id}", Name = "DeleteRestaurant")]
+        [Authorize(Policy = "restaurant-owner")]
         public async Task<ActionResult<RestDTO<RestaurantDTO>>> DeleteRestaurantAsync(Guid id)
         {
             var restaurant = await _repository.DeleteAsync(id);
