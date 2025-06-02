@@ -2,26 +2,45 @@
 using Foodiee.DTO;
 using Foodiee.Models;
 using Foodiee.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Foodiee.Controllers
 {
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     [ApiController]
     public class MenuItemsController : ControllerBase
     {
         private readonly IMenuItemRepository _repository;
 
+        private readonly UserSyncService _userSyncService;
+
+        private readonly IRestaurantRepository _restaurantRepository;
         public MenuItemsController(
-            IMenuItemRepository repository)
+            IMenuItemRepository repository,
+            UserSyncService userSync,
+            IRestaurantRepository restaurantRepository)
         {
+            _userSyncService = userSync;
             _repository = repository;
+            _restaurantRepository = restaurantRepository;
         }
 
         [HttpPost(Name = "AddMenuItem")]
+        [Authorize(Policy = "restaurant-owner")]
         public async Task<ActionResult<RestDTO<MenuItemDTO>>> AddMenuItemAsync(
             [FromBody] CreateMenuItemDTO dto)
         {
+            var user = await _userSyncService.SyncUserFromClaims(User);
+
+            var restaurant = await _restaurantRepository.GetByIdAsync(dto.RestaurantId);
+
+            if (restaurant == null)
+                return NotFound("Restaurant not found");
+
+            if (user.Id != restaurant.OwnerId)
+                return Forbid();
+
             var menuItem = new MenuItem
             {
                 Id = Guid.NewGuid(),
@@ -32,12 +51,9 @@ namespace Foodiee.Controllers
                 IsAvailable = true
             };
 
-
             var addedToMenu = await _repository.AddAsync(menuItem);
-            if (addedToMenu == null)
-                return NotFound("Restaurant not found");
 
-            return CreatedAtAction(nameof(GetMenuItemAsync), new { id = addedToMenu.Id }, new RestDTO<MenuItemDTO>
+            return CreatedAtAction("GetMenuItem", new { id = addedToMenu.Id }, new RestDTO<MenuItemDTO>
             {
                 Data = new MenuItemDTO
                 {
@@ -98,6 +114,20 @@ namespace Foodiee.Controllers
         public async Task<ActionResult<RestDTO<MenuItemDTO?>>> UpdateMenuItemAsync(
             [FromBody] MenuItemDTO model)
         {
+            var user = await _userSyncService.SyncUserFromClaims(User);
+
+            var menu = await _repository.GetByIdAsync(model.Id);
+
+            if (menu == null)
+                return NotFound("MenuItem with provided ID does not exist!!");
+
+            var restaurant = await _restaurantRepository.GetByIdAsync(menu.RestaurantId);
+
+            if (restaurant == null)
+                return NotFound("Restaurant with the menu does not exist");
+
+            if (user.Id != restaurant.OwnerId)
+                return Forbid();
 
             var toUpdate = new MenuItem
             {
@@ -109,9 +139,6 @@ namespace Foodiee.Controllers
             };
 
             var updatedItem = await _repository.UpdateAsync(toUpdate);
-
-            if (updatedItem == null)
-                return NotFound("Menu Item not found");
 
             var dto = new MenuItemDTO
             {
@@ -164,9 +191,22 @@ namespace Foodiee.Controllers
         public async Task<ActionResult<RestDTO<MenuItemDTO>>> DeleteMenuItemAsync(
             Guid id)
         {
+            var user = await _userSyncService.SyncUserFromClaims(User);
+
+            var menu = await _repository.GetByIdAsync(id);
+
+            if (menu == null)
+                return NotFound("MenuItem with provided ID does not exist!!");
+
+            var restaurant = await _restaurantRepository.GetByIdAsync(menu.RestaurantId);
+
+            if (restaurant == null)
+                return NotFound("Restaurant with the menu does not exist");
+
+            if (user.Id != restaurant.OwnerId)
+                return Forbid();
+
             var item = await _repository.DeleteAsync(id);
-            if (item == null)
-                return NotFound("Menu Item not found");
 
             MenuItemDTO dto = new MenuItemDTO
             {

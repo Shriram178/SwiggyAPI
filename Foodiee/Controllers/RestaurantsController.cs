@@ -129,6 +129,13 @@ namespace Foodiee.Controllers
             [FromBody] RestaurantDTO model)
         {
             var user = await _userSyncService.SyncUserFromClaims(User);
+            var restaurantTopdate = await _repository.GetByIdAsync(model.Id);
+
+            if (restaurantTopdate == null)
+                return NotFound();
+
+            if (user.Id != restaurantTopdate.OwnerId)
+                return Forbid();
 
             // Map DTO → Entity
             var toUpdate = new Restaurant
@@ -142,11 +149,6 @@ namespace Foodiee.Controllers
 
             // Call repo
             var updated = await _repository.UpdateAsync(toUpdate);
-
-            if (updated == null)
-                return NotFound(new RestDTO<RestaurantDTO?> { Data = null });
-
-            if (updated.OwnerId != user.Id) return Forbid();
 
             // Map Entity → DTO
             var dto = new RestaurantDTO
@@ -183,15 +185,15 @@ namespace Foodiee.Controllers
         public async Task<ActionResult<RestDTO<RestaurantDTO>>> DeleteRestaurantAsync(Guid id)
         {
             var user = await _userSyncService.SyncUserFromClaims(User);
+            var restaurantToDelete = await _repository.GetByIdAsync(id);
 
-
-            var restaurant = await _repository.DeleteAsync(id);
-
-            if (restaurant == null)
+            if (restaurantToDelete == null)
                 return NotFound();
 
-            if (user.Id != restaurant.Id)
+            if (user.Id != restaurantToDelete.OwnerId)
                 return Forbid();
+
+            var restaurant = await _repository.DeleteAsync(id);
 
             RestaurantDTO dto = new RestaurantDTO
             {
