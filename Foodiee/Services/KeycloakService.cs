@@ -15,12 +15,7 @@ namespace Foodiee.Services
             _config = config;
         }
 
-        /// <summary>
-        /// 1) Uses client_credentials to get an admin token.
-        /// 2) Calls /admin/realms/{realm}/users to create the new user.
-        /// 3) Sets the initial password.
-        /// </summary>
-        public async Task RegisterNewUserAsync(UserRegisterDto dto)
+        public async Task<string> GetAdminAccessTokenAsync()
         {
             var keycloakUrl = _config["Keycloak:AuthUrl"]?.TrimEnd('/');
             var realm = _config["Keycloak:Realm"]!;
@@ -28,8 +23,6 @@ namespace Foodiee.Services
             var adminClientSecret = _config["Keycloak:AdminClientSecret"]!;
             var adminUsername = _config["Keycloak:AdminUsername"]!;
             var adminPassword = _config["Keycloak:AdminPassword"]!;
-
-            // 1. Get an admin access token (client_credentials)
             var tokenResponse = await _httpClient.PostAsync(
                 $"{keycloakUrl}/realms/master/protocol/openid-connect/token",
                 new FormUrlEncodedContent(new Dictionary<string, string>
@@ -40,15 +33,26 @@ namespace Foodiee.Services
                     ["username"] = adminUsername,
                     ["password"] = adminPassword
                 }));
-
             if (!tokenResponse.IsSuccessStatusCode)
             {
                 var err = await tokenResponse.Content.ReadAsStringAsync();
                 throw new HttpRequestException($"Keycloak admin login failed: {err}");
             }
-
             var tokenJson = await tokenResponse.Content.ReadFromJsonAsync<JsonElement>();
-            var adminToken = tokenJson.GetProperty("access_token").GetString();
+            return tokenJson.GetProperty("access_token").GetString() ?? throw new Exception("Could not retrieve admin token from Keycloak.");
+        }
+
+        /// <summary>
+        /// 1) Uses client_credentials to get an admin token.
+        /// 2) Calls /admin/realms/{realm}/users to create the new user.
+        /// 3) Sets the initial password.
+        /// 4) Assigns "restaurant-owner" role if requested.
+        /// </summary>
+        public async Task RegisterNewUserAsync(UserRegisterDto dto)
+        {
+            var keycloakUrl = _config["Keycloak:AuthUrl"]?.TrimEnd('/');
+            var realm = _config["Keycloak:Realm"]!;
+            var adminToken = await GetAdminAccessTokenAsync();
 
             if (string.IsNullOrEmpty(adminToken))
                 throw new Exception("Could not retrieve admin token from Keycloak.");
@@ -57,7 +61,7 @@ namespace Foodiee.Services
             string firstName = dto.Username.Substring(0, length / 2);
             string lastName = dto.Username.Substring(length / 2);
 
-            // 2. Create the new user in Keycloak
+            // 2. Create the new user
             _httpClient.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", adminToken);
 
@@ -81,13 +85,12 @@ namespace Foodiee.Services
                 throw new HttpRequestException($"Keycloak user creation failed: {err}");
             }
 
-            // 3. Keycloak returns 201 Created → Location header has /users/{id}
+            // 3. Extract user ID from Location header
             var location = createResponse.Headers.Location?.ToString();
             if (string.IsNullOrEmpty(location))
                 throw new Exception("Keycloak did not return the new user’s ID.");
 
-            var segments = location.Split('/');
-            var userId = segments.Last();
+            var userId = location.Split('/').Last();
 
             // 4. Set the user's initial password
             var passwordPayload = new
@@ -107,7 +110,36 @@ namespace Foodiee.Services
                 var err = await setPasswordResponse.Content.ReadAsStringAsync();
                 throw new HttpRequestException($"Keycloak password reset failed: {err}");
             }
+
+            // 5. Assign the restaurant-owner role if applicable
+            if (dto.IsRestaurantOwner)
+            {
+                // Get the role representation
+                var roleResponse = await _httpClient.GetAsync(
+                    $"{keycloakUrl}/admin/realms/{realm}/roles/restaurant-owner"
+                );
+
+                if (!roleResponse.IsSuccessStatusCode)
+                {
+                    var err = await roleResponse.Content.ReadAsStringAsync();
+                    throw new HttpRequestException($"Failed to fetch role: {err}");
+                }
+
+                var role = await roleResponse.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+
+                var assignRoleResponse = await _httpClient.PostAsJsonAsync(
+                    $"{keycloakUrl}/admin/realms/{realm}/users/{userId}/role-mappings/realm",
+                    new[] { role }
+                );
+
+                if (!assignRoleResponse.IsSuccessStatusCode)
+                {
+                    var err = await assignRoleResponse.Content.ReadAsStringAsync();
+                    throw new HttpRequestException($"Failed to assign role: {err}");
+                }
+            }
         }
+
 
         public async Task<LoginResponseDto> LoginAsync(LoginDto dto)
         {

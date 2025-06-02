@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 namespace Foodiee.DTO
 {
@@ -9,5 +10,8 @@ namespace Foodiee.DTO
         [Required] public string Password { get; set; }
 
         [Required] public string Address { get; set; }
+
+        [DefaultValue(false)]
+        public bool IsRestaurantOwner { get; set; }
     }
 }
