@@ -12,10 +12,14 @@ namespace Foodiee.Controllers
     {
 
         private readonly IRestaurantRepository _repository;
+        private readonly UserSyncService _userSyncService;
 
-        public RestaurantsController(IRestaurantRepository repository)
+        public RestaurantsController(
+            IRestaurantRepository repository,
+            UserSyncService userSyncService)
         {
             _repository = repository;
+            _userSyncService = userSyncService;
         }
 
         // POST: api/Restaurants
@@ -24,6 +28,8 @@ namespace Foodiee.Controllers
         public async Task<ActionResult<RestDTO<RestaurantDTO>>> CreateRestaurantAsync(
             CreateRestaurantDTO dto)
         {
+            var user = await _userSyncService.SyncUserFromClaims(User);
+
             var restaurant = new Restaurant
             {
                 Id = Guid.NewGuid(),
@@ -31,6 +37,7 @@ namespace Foodiee.Controllers
                 Address = dto.Address,
                 PhoneNumber = dto.PhoneNumber,
                 City = dto.City,
+                OwnerId = user.Id,
                 Description = dto.Description,
             };
 
@@ -121,6 +128,8 @@ namespace Foodiee.Controllers
         public async Task<ActionResult<RestDTO<RestaurantDTO?>>> UpdateRestaurantAsync(
             [FromBody] RestaurantDTO model)
         {
+            var user = await _userSyncService.SyncUserFromClaims(User);
+
             // Map DTO → Entity
             var toUpdate = new Restaurant
             {
@@ -136,6 +145,8 @@ namespace Foodiee.Controllers
 
             if (updated == null)
                 return NotFound(new RestDTO<RestaurantDTO?> { Data = null });
+
+            if (updated.OwnerId != user.Id) return Forbid();
 
             // Map Entity → DTO
             var dto = new RestaurantDTO
@@ -171,10 +182,16 @@ namespace Foodiee.Controllers
         [Authorize(Policy = "restaurant-owner")]
         public async Task<ActionResult<RestDTO<RestaurantDTO>>> DeleteRestaurantAsync(Guid id)
         {
+            var user = await _userSyncService.SyncUserFromClaims(User);
+
+
             var restaurant = await _repository.DeleteAsync(id);
 
             if (restaurant == null)
                 return NotFound();
+
+            if (user.Id != restaurant.Id)
+                return Forbid();
 
             RestaurantDTO dto = new RestaurantDTO
             {

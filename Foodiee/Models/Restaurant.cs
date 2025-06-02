@@ -23,7 +23,14 @@ namespace Foodiee.Models
         [Required]
         public string PhoneNumber { get; set; }
 
+        [Required]
+        public Guid OwnerId { get; set; }
+
+        public User Owner { get; set; }
+
         public bool IsOpen { get; set; } = true;
+
+
 
         public List<MenuItem> MenuItems { get; set; }
     }

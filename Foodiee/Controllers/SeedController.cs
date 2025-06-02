@@ -43,6 +43,7 @@ namespace Foodiee.Controllers
                 City = "SampleCity",
                 Description = "Delicious food served fast",
                 PhoneNumber = "987-654-3210",
+                OwnerId = user.Id,
                 IsOpen = true
             };
 

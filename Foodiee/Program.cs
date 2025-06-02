@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using Foodiee.Models;
 using Foodiee.Repositories;
+using Foodiee.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -14,14 +15,21 @@ namespace Foodiee
             var builder = WebApplication.CreateBuilder(args);
 
             //builder.Services.AddScoped<IClaimsTransformation, KeycloakRoleClaimsTransformer>();
+
+            builder.Services.AddHttpClient<KeycloakService>(client =>
+            {
+                client.BaseAddress = new Uri(builder.Configuration["Keycloak:AuthUrl"]);
+            });
+
             builder.Services.AddScoped<UserSyncService>();
 
+            builder.Services.AddScoped<KeycloakService>();
 
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
-                options.Authority = "http://localhost:8080/realms/foodie-realm"; // 👈 Replace with your realm URL
-                options.Audience = "account"; // 👈 Replace with your client ID in Keycloak
+                options.Authority = builder.Configuration["Keycloak:Authority"];
+                options.Audience = builder.Configuration["Keycloak:Audience"];
                 options.RequireHttpsMetadata = false;
 
                 options.TokenValidationParameters = new TokenValidationParameters

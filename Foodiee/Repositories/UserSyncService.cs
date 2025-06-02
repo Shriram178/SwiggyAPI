@@ -17,6 +17,7 @@ namespace Foodiee.Repositories
         {
             var username = userClaims.Identity?.Name;
             var email = userClaims.FindFirst("email")?.Value;
+            var address = userClaims.FindFirst("address")?.Value;
 
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
 
@@ -27,7 +28,7 @@ namespace Foodiee.Repositories
                     Id = Guid.NewGuid(),
                     Username = username!,
                     Email = email,
-                    Address = "", // or fetch from claims if available
+                    Address = address,
                     CreatedAt = DateTime.UtcNow
                 };
 

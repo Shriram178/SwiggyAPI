@@ -15,8 +15,7 @@ namespace Foodiee.Models
         [EmailAddress]
         public string Email { get; set; }
 
-        [Required]
-        public string Password { get; set; }
+        public string? Password { get; set; }
 
         [Required]
         public string Address { get; set; }
@@ -24,6 +23,7 @@ namespace Foodiee.Models
         [Required]
         public DateTime CreatedAt { get; set; }
 
+        public ICollection<Restaurant> Restaurants { get; set; }
 
     }
 }
